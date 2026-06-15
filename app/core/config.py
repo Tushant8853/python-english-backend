@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     firebase_private_key: str = Field(alias="FIREBASE_PRIVATE_KEY")
     jwt_secret: str = Field(alias="JWT_SECRET")
     jwt_access_token_expiry: str = Field(default="365d", alias="JWT_ACCESS_TOKEN_EXPIRY")
+    admin_username: str | None = Field(default=None, alias="ADMIN_USERNAME")
+    admin_password: str | None = Field(default=None, alias="ADMIN_PASSWORD")
+    admin_jwt_secret: str | None = Field(default=None, alias="ADMIN_JWT_SECRET")
     allowed_hosts: str | None = Field(default=None, alias="ALLOWED_HOSTS")
 
     @field_validator("firebase_private_key")

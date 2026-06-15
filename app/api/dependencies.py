@@ -6,12 +6,13 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException
 
-from app.core.constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR
+from app.core.constants import HTTP_BAD_REQUEST, HTTP_UNAUTHORIZED, HTTP_INTERNAL_SERVER_ERROR
 from app.core.exceptions import AppError
 from app.models.user import UserDocument
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.services.health_service import HealthService
+from app.services.admin_token_service import WebAdminTokenPayload, verify_admin_token
 from app.services.token_service import verify_access_token
 
 
@@ -60,3 +61,23 @@ async def get_current_user(
             detail={"status": "error", "message": "Active user not found"},
         )
     return user
+
+
+async def get_web_admin(
+    authorization: Annotated[str | None, Header()] = None,
+) -> WebAdminTokenPayload:
+    """Validate Bearer admin JWT for dashboard routes."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=HTTP_UNAUTHORIZED,
+            detail={"success": False, "message": "Unauthorized"},
+        )
+
+    token = authorization[len("Bearer ") :].strip()
+    try:
+        return verify_admin_token(token)
+    except AppError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"success": False, "message": exc.message},
+        ) from exc
