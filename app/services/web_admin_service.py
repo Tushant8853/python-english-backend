@@ -1,4 +1,4 @@
-"""Web admin login and overview analytics."""
+"""Web admin login, overview, and remote config management."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ from app.core.exceptions import AppError
 from app.database.connection import get_database
 from app.schemas.web_admin import WebAdminOverviewData
 from app.services.admin_token_service import generate_admin_token
+from app.services.app_config_service import app_config_to_payload, get_active_app_config
+from app.utils.video_playback import playback_url_from_file_name
 
 
 def _timing_safe_equal(left: str, right: str) -> bool:
@@ -48,6 +50,10 @@ async def get_overview() -> WebAdminOverviewData:
         {"status": "active", "onboardingComplete": True}
     )
 
+    config = await get_active_app_config()
+    intro_file = config.intro_video.video_file_name.strip()
+    sales_file = config.sales_video.video_file_name.strip()
+
     return WebAdminOverviewData(
         total_users=total_users,
         active_users=active_users,
@@ -55,4 +61,20 @@ async def get_overview() -> WebAdminOverviewData:
         suspended_users=suspended_users,
         onboarding_completed_users=onboarding_completed_users,
         generated_at=datetime.now(UTC),
+        intro_video_enabled=config.intro_video.enabled,
+        intro_video_show_every_launch=config.intro_video.show_every_launch,
+        intro_video_file_name=intro_file,
+        intro_video_url=playback_url_from_file_name(intro_file),
+        sales_video_enabled=config.sales_video.enabled,
+        sales_video_file_name=sales_file,
+        sales_video_url=playback_url_from_file_name(sales_file),
+        chat_ui_show_call=config.chat_ui.show_call,
+        chat_ui_show_voice=config.chat_ui.show_voice,
+        chat_ui_show_mic=config.chat_ui.show_mic,
+        chat_ui_show_delete_user=config.chat_ui.show_delete_user,
     )
+
+
+async def get_app_config_payload() -> dict:
+    config = await get_active_app_config()
+    return app_config_to_payload(config)

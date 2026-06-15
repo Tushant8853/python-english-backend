@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     admin_password: str | None = Field(default=None, alias="ADMIN_PASSWORD")
     admin_jwt_secret: str | None = Field(default=None, alias="ADMIN_JWT_SECRET")
     allowed_hosts: str | None = Field(default=None, alias="ALLOWED_HOSTS")
+    aws_access_key_id: str | None = Field(default=None, alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str | None = Field(default=None, alias="AWS_SECRET_ACCESS_KEY")
+    aws_region: str | None = Field(default=None, alias="AWS_REGION")
+    aws_s3_bucket_name: str | None = Field(default=None, alias="AWS_S3_BUCKET_NAME")
+    cloudfront_distribution_domain: str | None = Field(
+        default=None,
+        alias="CLOUDFRONT_DISTRIBUTION_DOMAIN",
+    )
+    asset_base_url: str | None = Field(default=None, alias="ASSET_BASE_URL")
 
     @field_validator("firebase_private_key")
     @classmethod

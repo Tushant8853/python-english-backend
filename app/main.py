@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.app import router as app_router
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
 from app.api.web_admin import router as web_admin_router
@@ -17,6 +18,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.database.connection import close_database, connect_database
 from app.database.indexes import ensure_user_indexes
+from app.services.app_config_service import ensure_active_app_config
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.utils.exception_handlers import register_exception_handlers
 
@@ -29,6 +31,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if await connect_database():
         try:
             await ensure_user_indexes()
+            await ensure_active_app_config()
         except Exception as exc:
             logger.warning(
                 "Could not ensure user indexes; re-login after delete may fail if legacy unique firebaseUid index exists.",
@@ -66,6 +69,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     app.include_router(health_router, prefix="/api")
+    app.include_router(app_router, prefix="/api")
     app.include_router(auth_router, prefix="/api")
     app.include_router(web_admin_router, prefix="/api")
 

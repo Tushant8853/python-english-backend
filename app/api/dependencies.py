@@ -63,6 +63,23 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    authorization: Annotated[str | None, Header()] = None,
+    user_repository: UserRepository = Depends(get_user_repository),
+) -> UserDocument | None:
+    """Load the active user when a valid Bearer JWT is present; otherwise None."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization[len("Bearer ") :].strip()
+    try:
+        payload = verify_access_token(token)
+    except AppError:
+        return None
+
+    return await user_repository.find_active_by_id(payload.user_id)
+
+
 async def get_web_admin(
     authorization: Annotated[str | None, Header()] = None,
 ) -> WebAdminTokenPayload:

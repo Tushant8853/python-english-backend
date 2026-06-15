@@ -96,7 +96,7 @@ class AuthService:
             status="success",
             message=message,
             data=FirebaseLoginData(
-                user=_serialize_login_user(user),
+                user=serialize_login_user(user),
                 access_token=access_token,
             ),
         )
@@ -177,7 +177,7 @@ class AuthService:
         )
 
 
-def _serialize_login_user(user: UserDocument) -> LoginUserResponse:
+def serialize_login_user(user: UserDocument) -> LoginUserResponse:
     profile_response: OnboardingProfileResponse | None = None
     if user.profile is not None:
         profile_response = OnboardingProfileResponse(
