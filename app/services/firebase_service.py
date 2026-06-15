@@ -27,19 +27,8 @@ class DecodedFirebaseUser:
 def _ensure_firebase_app(settings: Settings) -> None:
     global _firebase_initialized
     if _firebase_initialized:
-        logger.debug("Firebase Admin already initialized")
         return
 
-    logger.info(
-        "Initializing Firebase Admin",
-        extra={
-            "meta": {
-                "projectId": settings.firebase_project_id,
-                "clientEmail": settings.firebase_client_email,
-                "privateKeyPresent": bool(settings.firebase_private_key),
-            }
-        },
-    )
     credential = credentials.Certificate(
         {
             "type": "service_account",
@@ -51,7 +40,6 @@ def _ensure_firebase_app(settings: Settings) -> None:
     )
     firebase_admin.initialize_app(credential)
     _firebase_initialized = True
-    logger.info("Firebase Admin initialized successfully")
 
 
 async def verify_firebase_id_token(id_token: str) -> DecodedFirebaseUser:
@@ -59,11 +47,13 @@ async def verify_firebase_id_token(id_token: str) -> DecodedFirebaseUser:
     settings = get_settings()
     _ensure_firebase_app(settings)
 
-    logger.debug("Verifying Firebase ID token", extra={"meta": {"tokenLength": len(id_token)}})
     try:
         decoded = await asyncio.to_thread(auth.verify_id_token, id_token.strip())
     except Exception as exc:
-        logger.warning("Firebase token verification failed", extra={"meta": {"error": str(exc)}})
+        logger.warning(
+            "Firebase token verification failed",
+            extra={"meta": {"error": str(exc)}},
+        )
         if isinstance(exc, AppError):
             raise
         raise AppError("Invalid Firebase ID token", HTTP_BAD_REQUEST) from exc
@@ -72,8 +62,4 @@ async def verify_firebase_id_token(id_token: str) -> DecodedFirebaseUser:
     if not email:
         raise AppError("Email not found in Firebase token", HTTP_BAD_REQUEST)
 
-    logger.debug(
-        "Firebase token verified",
-        extra={"meta": {"uid": decoded.get("uid"), "email": email}},
-    )
     return DecodedFirebaseUser(uid=str(decoded["uid"]), email=str(email))

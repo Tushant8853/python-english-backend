@@ -39,47 +39,35 @@ class AuthService:
 
     async def firebase_login(self, payload: FirebaseLoginRequest) -> FirebaseLoginResponse:
         id_token = payload.id_token
-        logger.info(
-            "Firebase login requested",
-            extra={
-                "meta": {
-                    "hasIdToken": bool(id_token),
-                    "idTokenLength": len(id_token) if isinstance(id_token, str) else 0,
-                    "hasFcmToken": bool(payload.fcm_token),
-                    "hasDeviceId": bool(payload.device_id),
-                    "platform": payload.platform or "android(default)",
-                    "termsAccepted": payload.terms_accepted or False,
-                }
-            },
-        )
 
         if not id_token or not isinstance(id_token, str) or not id_token.strip():
             raise AppError("Firebase idToken is required", HTTP_BAD_REQUEST)
 
         firebase_user = await verify_firebase_id_token(id_token)
-        user = await self._users.find_by_firebase_uid(firebase_user.uid)
-        is_new_user = user is None
+        normalized_email = firebase_user.email.lower().strip()
+        normalized_uid = firebase_user.uid.strip()
         now = datetime.now(UTC)
+
+        user = await self._users.find_active_by_email_and_firebase_uid(
+            normalized_email,
+            normalized_uid,
+        )
+        if user is None:
+            user = await self._users.find_active_by_firebase_uid(normalized_uid)
 
         if user is not None and user.status == "suspended":
             raise AppError("Account is suspended", HTTP_BAD_REQUEST)
 
-        if user is not None and user.status == "deleted":
-            logger.info(
-                "Reactivating deleted user on login",
-                extra={"meta": {"userId": str(user._id), "firebaseUid": firebase_user.uid}},
-            )
-            user.status = "active"
-            user.last_login_at = now
+        is_new_user = user is None
 
         if user is None:
             user = await self._users.create_user(
-                email=firebase_user.email,
-                firebase_uid=firebase_user.uid,
+                email=normalized_email,
+                firebase_uid=normalized_uid,
                 terms_accepted=bool(payload.terms_accepted),
             )
         else:
-            user.email = firebase_user.email
+            user.email = normalized_email
             user.last_login_at = now
             if payload.terms_accepted is True and not user.terms_accepted:
                 user.terms_accepted = True
@@ -88,29 +76,19 @@ class AuthService:
         if payload.fcm_token and isinstance(payload.fcm_token, str) and payload.fcm_token.strip():
             platform = "ios" if payload.platform == "ios" else "android"
             upsert_fcm_token(user, payload.fcm_token, payload.device_id or "", platform)
-            logger.info(
-                "FCM token upserted",
-                extra={
-                    "meta": {
-                        "userId": str(user._id),
-                        "platform": platform,
-                        "hasDeviceId": bool(payload.device_id),
-                    }
-                },
-            )
 
         user = await self._users.save_user(user)
         access_token = generate_access_token(str(user._id))
 
         message = "User created and login successful" if is_new_user else "Login successful"
         logger.info(
-            "Firebase login successful",
+            message,
             extra={
                 "meta": {
                     "userId": str(user._id),
+                    "email": user.email,
                     "isNewUser": is_new_user,
                     "onboardingComplete": user.onboarding_complete,
-                    "accessTokenLength": len(access_token),
                 }
             },
         )
@@ -124,17 +102,9 @@ class AuthService:
         )
 
     async def logout(self, user: UserDocument, payload: LogoutRequest) -> LogoutResponse:
-        logger.info(
-            "Logout requested",
-            extra={"meta": {"userId": str(user._id), "hasFcmToken": bool(payload.fcm_token)}},
-        )
         if payload.fcm_token and isinstance(payload.fcm_token, str) and payload.fcm_token.strip():
             remove_fcm_token(user, payload.fcm_token)
             await self._users.save_user(user)
-            logger.info(
-                "FCM token removed on logout",
-                extra={"meta": {"userId": str(user._id)}},
-            )
 
         logger.info("Logout successful", extra={"meta": {"userId": str(user._id)}})
         return LogoutResponse(status="success", message="Logout successful", data=None)
@@ -144,17 +114,12 @@ class AuthService:
         user: UserDocument,
         payload: DeleteAccountRequest,
     ) -> DeleteAccountResponse:
-        logger.info(
-            "Delete account requested",
-            extra={"meta": {"userId": str(user._id), "hasFcmToken": bool(payload.fcm_token)}},
-        )
         if payload.fcm_token and isinstance(payload.fcm_token, str) and payload.fcm_token.strip():
             remove_fcm_token(user, payload.fcm_token)
-            await self._users.save_user(user)
 
         await self._users.soft_delete_user(user)
         logger.info(
-            "Account deleted successfully",
+            "Account deleted",
             extra={"meta": {"userId": str(user._id), "email": user.email}},
         )
         return DeleteAccountResponse(status="success", message="Account deleted successfully", data=None)
@@ -164,18 +129,6 @@ class AuthService:
         user: UserDocument,
         payload: CompleteOnboardingRequest,
     ) -> CompleteOnboardingResponse:
-        logger.info(
-            "Onboarding requested",
-            extra={
-                "meta": {
-                    "userId": str(user._id),
-                    "name": payload.name,
-                    "age": payload.age,
-                    "bestDescribesYou": payload.best_describes_you,
-                }
-            },
-        )
-
         if not payload.name or not isinstance(payload.name, str) or not payload.name.strip():
             raise AppError("Name is required", HTTP_BAD_REQUEST)
 
@@ -204,7 +157,6 @@ class AuthService:
                     "userId": str(user._id),
                     "name": profile.name,
                     "age": profile.age,
-                    "bestDescribesYou": profile.best_describes_you,
                 }
             },
         )

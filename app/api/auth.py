@@ -1,6 +1,5 @@
 """Authentication routes."""
 
-import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -19,7 +18,6 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 
-logger = logging.getLogger("english_guru.auth.routes")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
@@ -38,22 +36,7 @@ async def firebase_login(
     payload: FirebaseLoginRequest,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> FirebaseLoginResponse:
-    logger.info(
-        "POST /api/auth/firebase-login",
-        extra={
-            "meta": {
-                "hasIdToken": bool(payload.id_token),
-                "platform": payload.platform,
-                "hasFcmToken": bool(payload.fcm_token),
-            }
-        },
-    )
-    response = await auth_service.firebase_login(payload)
-    logger.info(
-        "POST /api/auth/firebase-login completed",
-        extra={"meta": {"message": response.message}},
-    )
-    return response
+    return await auth_service.firebase_login(payload)
 
 
 @router.post(
@@ -69,30 +52,22 @@ async def logout(
     current_user: Annotated[UserDocument, Depends(get_current_user)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> LogoutResponse:
-    logger.info(
-        "POST /api/auth/logout",
-        extra={"meta": {"userId": str(current_user._id), "hasFcmToken": bool(payload.fcm_token)}},
-    )
     return await auth_service.logout(current_user, payload)
 
 
 @router.delete(
-    "/account",
+    "/delete-account",
     response_model=DeleteAccountResponse,
     response_model_by_alias=True,
     status_code=status.HTTP_200_OK,
     summary="Delete account",
-    description="Soft-delete the authenticated user (status deleted) and clear FCM tokens.",
+    description="Soft-delete the authenticated user (status deleted, deletedAt set) and clear FCM tokens.",
 )
 async def delete_account(
     payload: DeleteAccountRequest,
     current_user: Annotated[UserDocument, Depends(get_current_user)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> DeleteAccountResponse:
-    logger.info(
-        "DELETE /api/auth/account",
-        extra={"meta": {"userId": str(current_user._id), "hasFcmToken": bool(payload.fcm_token)}},
-    )
     return await auth_service.delete_account(current_user, payload)
 
 
@@ -109,15 +84,4 @@ async def complete_onboarding(
     current_user: Annotated[UserDocument, Depends(get_current_user)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> CompleteOnboardingResponse:
-    logger.info(
-        "POST /api/auth/onboarding",
-        extra={
-            "meta": {
-                "userId": str(current_user._id),
-                "name": payload.name,
-                "age": payload.age,
-                "bestDescribesYou": payload.best_describes_you,
-            }
-        },
-    )
     return await auth_service.complete_onboarding(current_user, payload)

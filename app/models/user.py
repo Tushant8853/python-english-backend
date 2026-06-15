@@ -73,6 +73,7 @@ class UserDocument:
     terms_accepted: bool = False
     terms_accepted_at: datetime | None = None
     last_login_at: datetime | None = None
+    deleted_at: datetime | None = None
     profile: UserProfile | None = None
     fcm_tokens: list[FcmToken] = field(default_factory=list)
     created_at: datetime | None = None
@@ -89,6 +90,7 @@ class UserDocument:
             terms_accepted=bool(raw.get("termsAccepted", False)),
             terms_accepted_at=_coerce_optional_datetime(raw.get("termsAcceptedAt")),
             last_login_at=_coerce_optional_datetime(raw.get("lastLoginAt")),
+            deleted_at=_coerce_optional_datetime(raw.get("deletedAt")),
             profile=UserProfile.from_mongo(raw.get("profile")),
             fcm_tokens=[FcmToken.from_mongo(item) for item in raw.get("fcmTokens", [])],
             created_at=_coerce_optional_datetime(raw.get("createdAt")),
@@ -104,6 +106,7 @@ class UserDocument:
             "termsAccepted": self.terms_accepted,
             "termsAcceptedAt": self.terms_accepted_at,
             "lastLoginAt": self.last_login_at,
+            "deletedAt": self.deleted_at,
             "fcmTokens": [token.to_mongo() for token in self.fcm_tokens],
         }
         if self.profile is not None:

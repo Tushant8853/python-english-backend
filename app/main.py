@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -14,14 +15,24 @@ from app.api.health import router as health_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.database.connection import close_database, connect_database
+from app.database.indexes import ensure_user_indexes
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.utils.exception_handlers import register_exception_handlers
+
+logger = logging.getLogger("english_guru.database")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Connect to MongoDB on startup; close on shutdown."""
-    await connect_database()
+    if await connect_database():
+        try:
+            await ensure_user_indexes()
+        except Exception as exc:
+            logger.warning(
+                "Could not ensure user indexes; re-login after delete may fail if legacy unique firebaseUid index exists.",
+                extra={"meta": {"error": str(exc)}},
+            )
     yield
     await close_database()
 
@@ -29,7 +40,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     """Build the FastAPI application with middleware and routes."""
     settings = get_settings()
-    logger = configure_logging(is_production=settings.is_production)
+    configure_logging(is_production=settings.is_production)
 
     app = FastAPI(
         title="English Guru API",
@@ -56,10 +67,6 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api")
 
-    logger.info(
-        "English Guru FastAPI application configured",
-        extra={"meta": {"environment": settings.environment, "port": settings.port}},
-    )
     return app
 
 

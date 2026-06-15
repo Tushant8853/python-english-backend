@@ -28,8 +28,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
         logger.warning(
-            "Operational error",
-            extra={"meta": {"message": exc.message, "statusCode": exc.status_code}},
+            f"{exc.message} ({exc.status_code})",
+            extra={"meta": {"statusCode": exc.status_code}},
         )
         return _error_response(exc.status_code, exc.message)
 

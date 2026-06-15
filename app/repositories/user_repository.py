@@ -24,6 +24,22 @@ class UserRepository:
             self._collection = get_database()["users"]
         return self._collection
 
+    async def find_active_by_email_and_firebase_uid(
+        self,
+        email: str,
+        firebase_uid: str,
+    ) -> UserDocument | None:
+        document = await self.collection.find_one(
+            {
+                "email": email.lower().strip(),
+                "firebaseUid": firebase_uid.strip(),
+                "status": "active",
+            }
+        )
+        if not document:
+            return None
+        return UserDocument.from_mongo(document)
+
     async def find_active_by_firebase_uid(self, firebase_uid: str) -> UserDocument | None:
         document = await self.collection.find_one({"firebaseUid": firebase_uid, "status": "active"})
         if not document:
@@ -85,6 +101,7 @@ class UserRepository:
     async def soft_delete_user(self, user: UserDocument) -> UserDocument:
         now = datetime.now(UTC)
         user.status = "deleted"
+        user.deleted_at = now
         user.fcm_tokens = []
         user.updated_at = now
         await self.collection.update_one(
@@ -92,6 +109,7 @@ class UserRepository:
             {
                 "$set": {
                     "status": "deleted",
+                    "deletedAt": now,
                     "fcmTokens": [],
                     "updatedAt": now,
                 }

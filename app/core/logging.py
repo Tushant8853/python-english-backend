@@ -25,6 +25,37 @@ _SENSITIVE_KEYS = frozenset(
     }
 )
 
+_NOISY_LOGGERS = (
+    "pymongo",
+    "pymongo.topology",
+    "pymongo.connection",
+    "pymongo.serverSelection",
+    "urllib3",
+    "urllib3.connectionpool",
+    "cachecontrol",
+    "cachecontrol.controller",
+    "httpx",
+    "httpcore",
+    "watchfiles",
+    "google",
+    "google.auth",
+    "googleapiclient",
+    "firebase_admin",
+    "uvicorn.access",
+)
+
+_RESET = "\033[0m"
+_GREEN = "\033[92m"
+_YELLOW = "\033[93m"
+_RED = "\033[91m"
+
+_LEVEL_COLORS = {
+    "INFO": _GREEN,
+    "WARNING": _YELLOW,
+    "ERROR": _RED,
+    "CRITICAL": _RED,
+}
+
 
 def _sanitize_meta(meta: dict[str, Any] | None) -> dict[str, Any] | None:
     if not meta:
@@ -38,6 +69,14 @@ def _sanitize_meta(meta: dict[str, Any] | None) -> dict[str, Any] | None:
         else:
             cleaned[key] = value
     return cleaned
+
+
+def _format_meta(meta: dict[str, Any] | None) -> str:
+    if not meta:
+        return ""
+    sanitized = _sanitize_meta(meta) or {}
+    parts = [f"{key}={value}" for key, value in sanitized.items()]
+    return f" ({', '.join(parts)})" if parts else ""
 
 
 class StructuredFormatter(logging.Formatter):
@@ -58,6 +97,20 @@ class StructuredFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
+class DevConsoleFormatter(logging.Formatter):
+    """Readable single-line logs for local development."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        meta = getattr(record, "meta", None)
+        meta_suffix = _format_meta(meta) if isinstance(meta, dict) else ""
+        line = f"{record.levelname:5} {record.name}: {record.getMessage()}{meta_suffix}"
+        if sys.stdout.isatty():
+            color = _LEVEL_COLORS.get(record.levelname, "")
+            if color:
+                return f"{color}{line}{_RESET}"
+        return line
+
+
 def configure_logging(*, is_production: bool) -> logging.Logger:
     """Configure root logging once at application startup."""
     root = logging.getLogger()
@@ -65,15 +118,11 @@ def configure_logging(*, is_production: bool) -> logging.Logger:
         return logging.getLogger("english_guru")
 
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(StructuredFormatter())
+    handler.setFormatter(StructuredFormatter() if is_production else DevConsoleFormatter())
     root.handlers = [handler]
-    root.setLevel(logging.INFO if is_production else logging.DEBUG)
-    logging.getLogger("uvicorn.access").setLevel(logging.INFO)
-    for noisy_logger in ("pymongo", "pymongo.topology", "pymongo.connection", "pymongo.serverSelection"):
-        logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+    root.setLevel(logging.INFO)
+
+    for logger_name in _NOISY_LOGGERS:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+
     return logging.getLogger("english_guru")
-
-
-def log_with_meta(logger: logging.Logger, level: int, message: str, meta: dict[str, Any] | None = None) -> None:
-    """Log a message with optional structured metadata."""
-    logger.log(level, message, extra={"meta": meta or {}})

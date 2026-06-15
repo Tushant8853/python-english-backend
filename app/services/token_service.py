@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from jose import JWTError, jwt
@@ -11,8 +11,6 @@ from jose import JWTError, jwt
 from app.core.config import get_settings
 from app.core.constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR
 from app.core.exceptions import AppError
-
-logger = logging.getLogger("english_guru.token")
 
 ALGORITHM = "HS256"
 
@@ -30,19 +28,13 @@ def generate_access_token(user_id: str) -> str:
     if not secret:
         raise AppError("JWT_SECRET is not configured", HTTP_INTERNAL_SERVER_ERROR)
 
-    logger.debug("Generating access token", extra={"meta": {"userId": user_id}})
+    expires_at = datetime.now(UTC) + settings.jwt_expiry_delta
     claims: dict[str, Any] = {
         "userId": user_id,
         "type": "access",
+        "exp": expires_at,
     }
-    token = jwt.encode(
-        claims,
-        secret,
-        algorithm=ALGORITHM,
-        expires_delta=settings.jwt_expiry_delta,
-    )
-    logger.debug("Access token generated", extra={"meta": {"tokenLength": len(token)}})
-    return token
+    return jwt.encode(claims, secret, algorithm=ALGORITHM)
 
 
 def verify_access_token(token: str) -> AccessTokenPayload:
@@ -55,7 +47,6 @@ def verify_access_token(token: str) -> AccessTokenPayload:
     try:
         payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
     except JWTError as exc:
-        logger.debug("JWT verification failed", extra={"meta": {"error": str(exc)}})
         raise AppError("Invalid or expired token", HTTP_BAD_REQUEST) from exc
 
     user_id = payload.get("userId")
