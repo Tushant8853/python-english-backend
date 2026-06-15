@@ -1,0 +1,62 @@
+"""FastAPI dependencies for services and authentication."""
+
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import Depends, Header, HTTPException
+
+from app.core.constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR
+from app.core.exceptions import AppError
+from app.models.user import UserDocument
+from app.repositories.user_repository import UserRepository
+from app.services.auth_service import AuthService
+from app.services.health_service import HealthService
+from app.services.token_service import verify_access_token
+
+
+def get_user_repository() -> UserRepository:
+    return UserRepository()
+
+
+def get_auth_service(
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+) -> AuthService:
+    return AuthService(user_repository)
+
+
+def get_health_service() -> HealthService:
+    return HealthService()
+
+
+async def get_current_user(
+    authorization: Annotated[str | None, Header()] = None,
+    user_repository: UserRepository = Depends(get_user_repository),
+) -> UserDocument:
+    """
+    Validate Bearer JWT and load the active user.
+
+    Mirrors Node authenticate middleware: auth failures return HTTP 400.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=HTTP_BAD_REQUEST,
+            detail={"status": "error", "message": "Authorization token is required"},
+        )
+
+    token = authorization[len("Bearer ") :].strip()
+    try:
+        payload = verify_access_token(token)
+    except AppError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"status": "error", "message": exc.message},
+        ) from exc
+
+    user = await user_repository.find_active_by_id(payload.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=HTTP_BAD_REQUEST,
+            detail={"status": "error", "message": "Active user not found"},
+        )
+    return user
