@@ -81,3 +81,14 @@ async def ensure_user_indexes() -> None:
         name="email_active_unique",
     )
     logger.info("User indexes ensured")
+
+
+async def ensure_streak_indexes() -> None:
+    """Unique (userId, weekStart) for weekly streak documents."""
+    collection = get_database()["streaks"]
+    await collection.create_index(
+        [("userId", 1), ("weekStart", 1)],
+        unique=True,
+        name="userId_weekStart_unique",
+    )
+    logger.info("Streak indexes ensured")

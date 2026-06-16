@@ -57,6 +57,7 @@ class Settings(BaseSettings):
         alias="CLOUDFRONT_DISTRIBUTION_DOMAIN",
     )
     asset_base_url: str | None = Field(default=None, alias="ASSET_BASE_URL")
+    streak_timezone: str = Field(default="Asia/Kolkata", alias="STREAK_TIMEZONE")
 
     @field_validator("firebase_private_key")
     @classmethod
