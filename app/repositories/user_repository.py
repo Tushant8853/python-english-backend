@@ -10,6 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 
 from app.database.connection import get_database
 from app.models.user import UserDocument, UserProfile
+from app.utils.onboarding_progress import sync_onboarding_complete
 
 
 class UserRepository:
@@ -72,6 +73,9 @@ class UserRepository:
             "email": email.lower().strip(),
             "firebaseUid": firebase_uid.strip(),
             "status": "active",
+            "basicOnboardingComplete": False,
+            "intakeOnboardingComplete": False,
+            "testOnboardingComplete": False,
             "onboardingComplete": False,
             "termsAccepted": terms_accepted,
             "termsAcceptedAt": now if terms_accepted else None,
@@ -120,17 +124,27 @@ class UserRepository:
             raise RuntimeError("User document missing after soft delete")
         return UserDocument.from_mongo(document)
 
-    async def complete_onboarding(
+    async def complete_basic_onboarding(
         self,
         user: UserDocument,
         *,
         profile: UserProfile,
     ) -> UserDocument:
         user.profile = profile
-        user.onboarding_complete = True
+        user.basic_onboarding_complete = True
+        sync_onboarding_complete(user)
         saved = await self.save_user(user)
         await self.collection.update_one(
             {"_id": user._id},
             {"$unset": {"name": "", "age": "", "bestDescribesYou": ""}},
         )
         return saved
+
+    async def complete_onboarding(
+        self,
+        user: UserDocument,
+        *,
+        profile: UserProfile,
+    ) -> UserDocument:
+        """Backward-compatible alias for basic onboarding stage."""
+        return await self.complete_basic_onboarding(user, profile=profile)

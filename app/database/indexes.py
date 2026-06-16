@@ -92,3 +92,57 @@ async def ensure_streak_indexes() -> None:
         name="userId_weekStart_unique",
     )
     logger.info("Streak indexes ensured")
+
+
+async def ensure_lesson_library_indexes() -> None:
+    """Unique lessonCode and dayNumber for catalog lessons."""
+    collection = get_database()["lesson_library"]
+    await collection.create_index(
+        [("lessonCode", 1)],
+        unique=True,
+        name="lessonCode_unique",
+    )
+    await collection.create_index(
+        [("dayNumber", 1)],
+        unique=True,
+        name="dayNumber_unique",
+    )
+    await collection.create_index(
+        [("level", 1), ("sortOrder", 1)],
+        name="level_sortOrder",
+    )
+    await collection.create_index(
+        [("isActive", 1), ("sortOrder", 1)],
+        name="isActive_sortOrder",
+    )
+    logger.info("Lesson library indexes ensured")
+
+
+async def ensure_intake_question_indexes() -> None:
+    """Unique questionKey and order lookup for intake_questions."""
+    collection = get_database()["intake_questions"]
+    await collection.create_index(
+        [("questionKey", 1)],
+        unique=True,
+        name="questionKey_unique",
+    )
+    await collection.create_index(
+        [("isActive", 1), ("order", 1)],
+        name="isActive_order",
+    )
+    logger.info("Intake question indexes ensured")
+
+
+async def ensure_placement_question_indexes() -> None:
+    """Unique questionKey and order lookup for placement_questions."""
+    collection = get_database()["placement_questions"]
+    await collection.create_index(
+        [("questionKey", 1)],
+        unique=True,
+        name="questionKey_unique",
+    )
+    await collection.create_index(
+        [("isActive", 1), ("order", 1)],
+        name="isActive_order",
+    )
+    logger.info("Placement question indexes ensured")

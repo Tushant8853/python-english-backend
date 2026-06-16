@@ -52,8 +52,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         if exc.status_code == HTTP_NOT_FOUND:
             return _error_response(HTTP_NOT_FOUND, MESSAGES["ERRORS"]["NOT_FOUND"])
-        if isinstance(exc.detail, dict) and "status" in exc.detail and "message" in exc.detail:
-            return JSONResponse(status_code=exc.status_code, content=exc.detail)
+        if isinstance(exc.detail, dict) and "message" in exc.detail:
+            content = exc.detail
+            if "status" not in content and "success" not in content:
+                content = {"status": "error", "message": content["message"]}
+            return JSONResponse(status_code=exc.status_code, content=content)
         return _error_response(exc.status_code, str(exc.detail))
 
     @app.exception_handler(Exception)

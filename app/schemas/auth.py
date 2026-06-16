@@ -60,6 +60,9 @@ class LoginUserResponse(BaseModel):
     created_at: datetime | None = Field(default=None, serialization_alias="createdAt")
     updated_at: datetime | None = Field(default=None, serialization_alias="updatedAt")
     onboarding_complete: bool = Field(default=False, serialization_alias="onboardingComplete")
+    basic_onboarding_complete: bool = Field(default=False, serialization_alias="basicOnboardingComplete")
+    intake_onboarding_complete: bool = Field(default=False, serialization_alias="intakeOnboardingComplete")
+    test_onboarding_complete: bool = Field(default=False, serialization_alias="testOnboardingComplete")
     profile: OnboardingProfileResponse | None = None
     fcm_tokens: list[FcmTokenResponse] = Field(default_factory=list, serialization_alias="fcmTokens")
 
@@ -100,6 +103,9 @@ class DeleteAccountResponse(BaseModel):
 class OnboardingUserResponse(BaseModel):
     id: str
     profile: OnboardingProfileResponse
+    basic_onboarding_complete: bool = Field(serialization_alias="basicOnboardingComplete")
+    intake_onboarding_complete: bool = Field(serialization_alias="intakeOnboardingComplete")
+    test_onboarding_complete: bool = Field(serialization_alias="testOnboardingComplete")
     onboarding_complete: bool = Field(serialization_alias="onboardingComplete")
 
     model_config = {"populate_by_name": True}

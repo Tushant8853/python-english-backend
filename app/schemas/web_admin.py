@@ -44,6 +44,13 @@ class WebAdminOverviewData(BaseModel):
     chat_ui_show_voice: bool = Field(default=False, serialization_alias="chatUiShowVoice")
     chat_ui_show_mic: bool = Field(default=False, serialization_alias="chatUiShowMic")
     chat_ui_show_delete_user: bool = Field(default=True, serialization_alias="chatUiShowDeleteUser")
+    intake_onboarding_enabled: bool = Field(default=True, serialization_alias="intakeOnboardingEnabled")
+
+    model_config = {"populate_by_name": True}
+
+
+class IntakeOnboardingConfigRequest(BaseModel):
+    enabled: bool | None = None
 
     model_config = {"populate_by_name": True}
 

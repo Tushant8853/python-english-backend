@@ -18,7 +18,7 @@ class BootstrapScreens(BaseModel):
 
 
 class BootstrapData(BaseModel):
-    route: Literal["intro", "login", "onboarding", "paywall", "home"]
+    route: Literal["intro", "login", "onboarding", "intake", "placement", "paywall", "home"]
     authenticated: bool
     onboarding_completed: bool = Field(serialization_alias="onboardingCompleted")
     subscription_active: bool = Field(serialization_alias="subscriptionActive")

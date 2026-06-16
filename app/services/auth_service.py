@@ -26,6 +26,8 @@ from app.schemas.auth import (
     CompleteOnboardingData,
 )
 from app.services.firebase_service import verify_firebase_id_token
+from app.services.intake_stage_sync_service import sync_user_intake_stage_for_config
+from app.services.app_config_service import get_active_app_config
 from app.services.token_service import generate_access_token
 
 logger = logging.getLogger("english_guru.auth")
@@ -78,6 +80,8 @@ class AuthService:
             upsert_fcm_token(user, payload.fcm_token, payload.device_id or "", platform)
 
         user = await self._users.save_user(user)
+        config = await get_active_app_config()
+        user = await sync_user_intake_stage_for_config(user, config, user_repository=self._users)
         access_token = generate_access_token(str(user._id))
 
         message = "User created and login successful" if is_new_user else "Login successful"
@@ -149,20 +153,24 @@ class AuthService:
             best_describes_you=payload.best_describes_you,
         )
         user = await self._users.complete_onboarding(user, profile=profile)
+        config = await get_active_app_config()
+        user = await sync_user_intake_stage_for_config(user, config, user_repository=self._users)
 
         logger.info(
-            "Onboarding completed",
+            "Basic onboarding completed",
             extra={
                 "meta": {
                     "userId": str(user._id),
                     "name": profile.name,
                     "age": profile.age,
+                    "basicOnboardingComplete": user.basic_onboarding_complete,
+                    "onboardingComplete": user.onboarding_complete,
                 }
             },
         )
         return CompleteOnboardingResponse(
             status="success",
-            message="Onboarding completed",
+            message="Basic onboarding completed",
             data=CompleteOnboardingData(
                 user=OnboardingUserResponse(
                     id=str(user._id),
@@ -171,6 +179,9 @@ class AuthService:
                         age=user.profile.age if user.profile else None,
                         best_describes_you=user.profile.best_describes_you if user.profile else "",
                     ),
+                    basic_onboarding_complete=user.basic_onboarding_complete,
+                    intake_onboarding_complete=user.intake_onboarding_complete,
+                    test_onboarding_complete=user.test_onboarding_complete,
                     onboarding_complete=user.onboarding_complete,
                 )
             ),
@@ -197,6 +208,9 @@ def serialize_login_user(user: UserDocument) -> LoginUserResponse:
         created_at=user.created_at,
         updated_at=user.updated_at,
         onboarding_complete=user.onboarding_complete,
+        basic_onboarding_complete=user.basic_onboarding_complete,
+        intake_onboarding_complete=user.intake_onboarding_complete,
+        test_onboarding_complete=user.test_onboarding_complete,
         profile=profile_response,
         fcm_tokens=[
             FcmTokenResponse(

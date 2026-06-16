@@ -72,6 +72,7 @@ async def get_overview() -> WebAdminOverviewData:
         chat_ui_show_voice=config.chat_ui.show_voice,
         chat_ui_show_mic=config.chat_ui.show_mic,
         chat_ui_show_delete_user=config.chat_ui.show_delete_user,
+        intake_onboarding_enabled=config.intake_onboarding.enabled,
     )
 
 

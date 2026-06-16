@@ -38,6 +38,28 @@ class FcmToken:
 
 
 @dataclass
+class IntakeAnswer:
+    question_key: str
+    value: str
+    label: str = ""
+
+    def to_mongo(self) -> dict[str, Any]:
+        return {
+            "questionKey": self.question_key,
+            "value": self.value,
+            "label": self.label,
+        }
+
+    @classmethod
+    def from_mongo(cls, raw: dict[str, Any]) -> IntakeAnswer:
+        return cls(
+            question_key=str(raw.get("questionKey") or ""),
+            value=str(raw.get("value") or ""),
+            label=str(raw.get("label") or ""),
+        )
+
+
+@dataclass
 class UserProfile:
     name: str = ""
     age: int | None = None
@@ -69,29 +91,47 @@ class UserDocument:
     email: str
     firebase_uid: str
     status: UserStatus = "active"
+    basic_onboarding_complete: bool = False
+    intake_onboarding_complete: bool = False
+    test_onboarding_complete: bool = False
     onboarding_complete: bool = False
     terms_accepted: bool = False
     terms_accepted_at: datetime | None = None
     last_login_at: datetime | None = None
     deleted_at: datetime | None = None
     profile: UserProfile | None = None
+    intake_answers: list[IntakeAnswer] = field(default_factory=list)
+    placement_score: int | None = None
+    placement_level: str = ""
     fcm_tokens: list[FcmToken] = field(default_factory=list)
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
     @classmethod
     def from_mongo(cls, raw: dict[str, Any]) -> UserDocument:
+        from app.utils.onboarding_progress import read_onboarding_flags_from_mongo
+
+        basic, intake, test, complete = read_onboarding_flags_from_mongo(raw)
+        intake_raw = raw.get("intakeAnswers") or []
         return cls(
             _id=raw["_id"],
             email=str(raw.get("email", "")),
             firebase_uid=str(raw.get("firebaseUid", "")),
             status=raw.get("status", "active"),
-            onboarding_complete=bool(raw.get("onboardingComplete", False)),
+            basic_onboarding_complete=basic,
+            intake_onboarding_complete=intake,
+            test_onboarding_complete=test,
+            onboarding_complete=complete,
             terms_accepted=bool(raw.get("termsAccepted", False)),
             terms_accepted_at=_coerce_optional_datetime(raw.get("termsAcceptedAt")),
             last_login_at=_coerce_optional_datetime(raw.get("lastLoginAt")),
             deleted_at=_coerce_optional_datetime(raw.get("deletedAt")),
             profile=UserProfile.from_mongo(raw.get("profile")),
+            intake_answers=[
+                IntakeAnswer.from_mongo(item) for item in intake_raw if isinstance(item, dict)
+            ],
+            placement_score=raw.get("placementScore"),
+            placement_level=str(raw.get("placementLevel") or ""),
             fcm_tokens=[FcmToken.from_mongo(item) for item in raw.get("fcmTokens", [])],
             created_at=_coerce_optional_datetime(raw.get("createdAt")),
             updated_at=_coerce_optional_datetime(raw.get("updatedAt")),
@@ -102,11 +142,17 @@ class UserDocument:
             "email": self.email.lower().strip(),
             "firebaseUid": self.firebase_uid.strip(),
             "status": self.status,
+            "basicOnboardingComplete": self.basic_onboarding_complete,
+            "intakeOnboardingComplete": self.intake_onboarding_complete,
+            "testOnboardingComplete": self.test_onboarding_complete,
             "onboardingComplete": self.onboarding_complete,
             "termsAccepted": self.terms_accepted,
             "termsAcceptedAt": self.terms_accepted_at,
             "lastLoginAt": self.last_login_at,
             "deletedAt": self.deleted_at,
+            "intakeAnswers": [answer.to_mongo() for answer in self.intake_answers],
+            "placementScore": self.placement_score,
+            "placementLevel": self.placement_level,
             "fcmTokens": [token.to_mongo() for token in self.fcm_tokens],
         }
         if self.profile is not None:

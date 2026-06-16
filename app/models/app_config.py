@@ -106,6 +106,20 @@ class ForceUpdateConfig:
 
 
 @dataclass
+class IntakeOnboardingConfig:
+    enabled: bool = True
+
+    def to_mongo(self) -> dict[str, Any]:
+        return {"enabled": self.enabled}
+
+    @classmethod
+    def from_mongo(cls, raw: dict[str, Any] | None) -> IntakeOnboardingConfig:
+        if not raw:
+            return cls()
+        return cls(enabled=bool(raw.get("enabled", True)))
+
+
+@dataclass
 class ChatUiConfig:
     show_call: bool = False
     show_voice: bool = False
@@ -140,6 +154,7 @@ class AppConfigDocument:
     intro_video: IntroVideoConfig = field(default_factory=IntroVideoConfig)
     sales_video: SalesVideoConfig = field(default_factory=SalesVideoConfig)
     force_update: ForceUpdateConfig = field(default_factory=ForceUpdateConfig)
+    intake_onboarding: IntakeOnboardingConfig = field(default_factory=IntakeOnboardingConfig)
     chat_ui: ChatUiConfig = field(default_factory=ChatUiConfig)
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -153,6 +168,7 @@ class AppConfigDocument:
             intro_video=IntroVideoConfig.from_mongo(raw.get("introVideo")),
             sales_video=SalesVideoConfig.from_mongo(raw.get("salesVideo")),
             force_update=ForceUpdateConfig.from_mongo(raw.get("forceUpdate")),
+            intake_onboarding=IntakeOnboardingConfig.from_mongo(raw.get("intakeOnboarding")),
             chat_ui=ChatUiConfig.from_mongo(raw.get("chatUi")),
             created_at=_coerce_datetime(raw.get("createdAt")),
             updated_at=_coerce_datetime(raw.get("updatedAt")),
@@ -168,6 +184,7 @@ class AppConfigDocument:
             "introVideo": self.intro_video.to_mongo(),
             "salesVideo": self.sales_video.to_mongo(),
             "forceUpdate": self.force_update.to_mongo(),
+            "intakeOnboarding": self.intake_onboarding.to_mongo(),
             "chatUi": self.chat_ui.to_mongo(),
         }
 

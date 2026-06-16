@@ -52,6 +52,7 @@ def app_config_to_payload(config: AppConfigDocument) -> dict[str, Any]:
         "introVideo": _intro_video_payload(config.intro_video),
         "salesVideo": _sales_video_payload(config.sales_video),
         "forceUpdate": config.force_update.to_mongo(),
+        "intakeOnboarding": config.intake_onboarding.to_mongo(),
         "chatUi": config.chat_ui.to_mongo(),
     }
 
@@ -119,3 +120,13 @@ async def set_intro_video_file_name(file_name: str) -> dict[str, Any]:
 
 async def set_sales_video_file_name(file_name: str) -> dict[str, Any]:
     return await update_sales_video_config(video_file_name=file_name)
+
+
+async def update_intake_onboarding_config(*, enabled: bool | None = None) -> dict[str, Any]:
+    config = await get_active_app_config()
+    intake = config.intake_onboarding
+    if enabled is not None:
+        intake.enabled = enabled
+    config.intake_onboarding = intake
+    saved = await _repo.save(config)
+    return app_config_to_payload(saved)

@@ -13,12 +13,19 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api.app import router as app_router
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.onboarding import router as onboarding_router
 from app.api.streak import router as streak_router
 from app.api.web_admin import router as web_admin_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.database.connection import close_database, connect_database
-from app.database.indexes import ensure_streak_indexes, ensure_user_indexes
+from app.database.indexes import (
+    ensure_intake_question_indexes,
+    ensure_lesson_library_indexes,
+    ensure_placement_question_indexes,
+    ensure_streak_indexes,
+    ensure_user_indexes,
+)
 from app.services.app_config_service import ensure_active_app_config
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.utils.exception_handlers import register_exception_handlers
@@ -33,7 +40,15 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         try:
             await ensure_user_indexes()
             await ensure_streak_indexes()
+            await ensure_lesson_library_indexes()
+            await ensure_intake_question_indexes()
+            await ensure_placement_question_indexes()
             await ensure_active_app_config()
+            from app.services.intake_seed_service import ensure_default_intake_questions
+            from app.services.placement_seed_service import ensure_default_placement_questions
+
+            await ensure_default_intake_questions()
+            await ensure_default_placement_questions()
         except Exception as exc:
             logger.warning(
                 "Could not ensure user indexes; re-login after delete may fail if legacy unique firebaseUid index exists.",
@@ -73,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api")
     app.include_router(app_router, prefix="/api")
     app.include_router(auth_router, prefix="/api")
+    app.include_router(onboarding_router, prefix="/api")
     app.include_router(web_admin_router, prefix="/api")
     app.include_router(streak_router, prefix="/api")
 

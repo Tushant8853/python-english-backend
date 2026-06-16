@@ -1,4 +1,4 @@
-"""Bootstrap route resolution (Wellness-shaped; paywall stubbed off)."""
+"""Bootstrap route resolution (multi-stage onboarding)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from app.models.app_config import AppConfigDocument
 from app.models.user import UserDocument
 from app.services.app_config_service import app_config_to_payload
 
-BootstrapRoute = Literal["intro", "login", "onboarding", "paywall", "home"]
+BootstrapRoute = Literal["intro", "login", "onboarding", "intake", "placement", "paywall", "home"]
 
 
 def resolve_bootstrap_route(
@@ -20,15 +20,20 @@ def resolve_bootstrap_route(
 ) -> BootstrapRoute:
     del paywall_skipped  # reserved for future paywall flow
 
-    # Guest flow: intro once, then login. intro_seen wins over show_every_launch.
     if user is None:
         intro = config.intro_video
         if intro.enabled and not intro_seen:
             return "intro"
         return "login"
 
-    if not user.onboarding_complete:
+    if not user.basic_onboarding_complete:
         return "onboarding"
+
+    if config.intake_onboarding.enabled and not user.intake_onboarding_complete:
+        return "intake"
+
+    if not user.test_onboarding_complete:
+        return "placement"
 
     paywall = config.paywall
     if paywall.enabled and not paywall.closable:
@@ -57,7 +62,7 @@ def build_bootstrap_payload(
 
     show_paywall = (
         route == "paywall"
-        or (paywall_enabled and user is not None and not subscription_active)
+        or (paywall_enabled and user is not None and not subscription_active and route == "home")
     )
 
     return {
