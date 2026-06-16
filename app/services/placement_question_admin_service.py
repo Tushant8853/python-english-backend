@@ -167,5 +167,8 @@ class PlacementQuestionAdminService:
     async def reorder_questions(self, ordered_ids: list[str]) -> dict[str, object]:
         if not ordered_ids:
             raise AppError("orderedIds is required", status_code=400)
-        questions = await self._repository.reorder(ordered_ids)
+        try:
+            questions = await self._repository.reorder(ordered_ids)
+        except ValueError as exc:
+            raise AppError(str(exc), status_code=400) from exc
         return {"items": [self._question_to_payload(question) for question in questions]}

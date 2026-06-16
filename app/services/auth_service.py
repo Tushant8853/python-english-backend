@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from app.core.constants import HTTP_BAD_REQUEST, ONBOARDING_PROFILE_OPTIONS
+from app.core.constants import HTTP_BAD_REQUEST, HTTP_FORBIDDEN, ONBOARDING_PROFILE_OPTIONS
 from app.core.exceptions import AppError
 from app.models.user import UserDocument, UserProfile, upsert_fcm_token, remove_fcm_token
 from app.repositories.user_repository import UserRepository
@@ -58,7 +58,7 @@ class AuthService:
             user = await self._users.find_active_by_firebase_uid(normalized_uid)
 
         if user is not None and user.status == "suspended":
-            raise AppError("Account is suspended", HTTP_BAD_REQUEST)
+            raise AppError("Account is suspended", HTTP_FORBIDDEN)
 
         is_new_user = user is None
 

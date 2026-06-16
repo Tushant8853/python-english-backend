@@ -37,11 +37,11 @@ async def get_current_user(
     """
     Validate Bearer JWT and load the active user.
 
-    Mirrors Node authenticate middleware: auth failures return HTTP 400.
+    Mirrors Node authenticate middleware: auth failures return HTTP 401.
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
-            status_code=HTTP_BAD_REQUEST,
+            status_code=HTTP_UNAUTHORIZED,
             detail={"status": "error", "message": "Authorization token is required"},
         )
 
@@ -57,7 +57,7 @@ async def get_current_user(
     user = await user_repository.find_active_by_id(payload.user_id)
     if not user:
         raise HTTPException(
-            status_code=HTTP_BAD_REQUEST,
+            status_code=HTTP_UNAUTHORIZED,
             detail={"status": "error", "message": "Active user not found"},
         )
     return user

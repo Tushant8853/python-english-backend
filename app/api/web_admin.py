@@ -395,12 +395,7 @@ async def web_admin_reorder_intake_questions(
     _admin: Annotated[WebAdminTokenPayload, Depends(get_web_admin)],
     service: Annotated[IntakeQuestionAdminService, Depends(get_intake_question_admin_service)],
 ) -> IntakeQuestionReorderResponse:
-    try:
-        data = await service.reorder_questions(payload.ordered_ids)
-    except ValueError as exc:
-        from app.core.exceptions import AppError
-
-        raise AppError(str(exc), status_code=400) from exc
+    data = await service.reorder_questions(payload.ordered_ids)
     return IntakeQuestionReorderResponse(message="Intake questions reordered", data=data)
 
 
@@ -496,12 +491,7 @@ async def web_admin_reorder_placement_questions(
     _admin: Annotated[WebAdminTokenPayload, Depends(get_web_admin)],
     service: Annotated[PlacementQuestionAdminService, Depends(get_placement_question_admin_service)],
 ) -> PlacementQuestionReorderResponse:
-    try:
-        data = await service.reorder_questions(payload.ordered_ids)
-    except ValueError as exc:
-        from app.core.exceptions import AppError
-
-        raise AppError(str(exc), status_code=400) from exc
+    data = await service.reorder_questions(payload.ordered_ids)
     return PlacementQuestionReorderResponse(message="Placement questions reordered", data=data)
 
 

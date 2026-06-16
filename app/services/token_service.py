@@ -9,7 +9,7 @@ from typing import Any
 from jose import JWTError, jwt
 
 from app.core.config import get_settings
-from app.core.constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR
+from app.core.constants import HTTP_BAD_REQUEST, HTTP_FORBIDDEN, HTTP_INTERNAL_SERVER_ERROR, HTTP_UNAUTHORIZED
 from app.core.exceptions import AppError
 
 ALGORITHM = "HS256"
@@ -47,11 +47,11 @@ def verify_access_token(token: str) -> AccessTokenPayload:
     try:
         payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
     except JWTError as exc:
-        raise AppError("Invalid or expired token", HTTP_BAD_REQUEST) from exc
+        raise AppError("Invalid or expired token", HTTP_UNAUTHORIZED) from exc
 
     user_id = payload.get("userId")
     token_type = payload.get("type")
     if not user_id or token_type != "access":
-        raise AppError("Invalid access token", HTTP_BAD_REQUEST)
+        raise AppError("Invalid access token", HTTP_UNAUTHORIZED)
 
     return AccessTokenPayload(user_id=str(user_id), token_type=str(token_type))

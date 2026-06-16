@@ -7,7 +7,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import get_current_user
-from app.core.exceptions import AppError
 from app.models.streak import STREAK_DAY_KEYS
 from app.models.user import UserDocument
 from app.schemas.streak import (
@@ -105,10 +104,7 @@ async def update_streak(
     current_user: Annotated[UserDocument, Depends(get_current_user)],
     streak_service: Annotated[StreakService, Depends(get_streak_service)],
 ) -> StreakUpdateResponse:
-    try:
-        data = await streak_service.update_streak_day(str(current_user._id), payload.day)
-    except AppError as exc:
-        raise exc
+    data = await streak_service.update_streak_day(str(current_user._id), payload.day)
     return StreakUpdateResponse(data=_to_update_data(data))
 
 
@@ -123,10 +119,7 @@ async def check_in_streak(
     current_user: Annotated[UserDocument, Depends(get_current_user)],
     streak_service: Annotated[StreakService, Depends(get_streak_service)],
 ) -> StreakCheckInResponse:
-    try:
-        data = await streak_service.check_in_today(str(current_user._id), payload.date_key)
-    except AppError as exc:
-        raise exc
+    data = await streak_service.check_in_today(str(current_user._id), payload.date_key)
     update_data = _to_update_data(data)
     return StreakCheckInResponse(
         data=StreakCheckInData(
