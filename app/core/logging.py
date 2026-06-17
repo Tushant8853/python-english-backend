@@ -101,9 +101,14 @@ class DevConsoleFormatter(logging.Formatter):
     """Readable single-line logs for local development."""
 
     def format(self, record: logging.LogRecord) -> str:
+        ts = datetime.fromtimestamp(record.created).strftime("%H:%M:%S")
         meta = getattr(record, "meta", None)
         meta_suffix = _format_meta(meta) if isinstance(meta, dict) else ""
-        line = f"{record.levelname:5} {record.name}: {record.getMessage()}{meta_suffix}"
+        # Special-case HTTP access logs to keep them compact and easy to scan.
+        if record.name == "english_guru.http":
+            line = f"{ts} {record.levelname:7} {record.getMessage()}"
+        else:
+            line = f"{ts} {record.levelname:7} {record.name}: {record.getMessage()}{meta_suffix}"
         if sys.stdout.isatty():
             color = _LEVEL_COLORS.get(record.levelname, "")
             if color:
@@ -112,15 +117,34 @@ class DevConsoleFormatter(logging.Formatter):
 
 
 def configure_logging(*, is_production: bool) -> logging.Logger:
-    """Configure root logging once at application startup."""
-    root = logging.getLogger()
-    if root.handlers:
-        return logging.getLogger("english_guru")
+    """Configure root logging at application startup.
 
+    Note: In dev with reload, Python logging state can survive across reload cycles.
+    We intentionally replace root handlers so the console format stays consistent.
+    """
+    root = logging.getLogger()
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(StructuredFormatter() if is_production else DevConsoleFormatter())
     root.handlers = [handler]
     root.setLevel(logging.INFO)
+
+    # Uvicorn config can attach its own handlers/formatters. Force it to propagate
+    # into our root handler so all logs share one consistent format/colors.
+    uvicorn_error = logging.getLogger("uvicorn.error")
+    uvicorn_error.handlers = []
+    uvicorn_error.propagate = True
+    uvicorn_error.setLevel(logging.INFO)
+
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_logger.handlers = []
+    uvicorn_logger.propagate = True
+    uvicorn_logger.setLevel(logging.INFO)
+
+    uvicorn_access = logging.getLogger("uvicorn.access")
+    uvicorn_access.handlers = []
+    uvicorn_access.propagate = False
+    uvicorn_access.setLevel(logging.WARNING)
+    uvicorn_access.disabled = True
 
     for logger_name in _NOISY_LOGGERS:
         logging.getLogger(logger_name).setLevel(logging.WARNING)

@@ -80,7 +80,8 @@ async def ensure_user_indexes() -> None:
         partialFilterExpression={"status": "active"},
         name="email_active_unique",
     )
-    logger.info("User indexes ensured")
+    # Keep startup index maintenance out of normal INFO logs.
+    logger.debug("User indexes ensured")
 
 
 async def ensure_streak_indexes() -> None:
@@ -91,7 +92,7 @@ async def ensure_streak_indexes() -> None:
         unique=True,
         name="userId_weekStart_unique",
     )
-    logger.info("Streak indexes ensured")
+    logger.debug("Streak indexes ensured")
 
 
 async def ensure_lesson_library_indexes() -> None:
@@ -115,7 +116,7 @@ async def ensure_lesson_library_indexes() -> None:
         [("isActive", 1), ("sortOrder", 1)],
         name="isActive_sortOrder",
     )
-    logger.info("Lesson library indexes ensured")
+    logger.debug("Lesson library indexes ensured")
 
 
 async def ensure_intake_question_indexes() -> None:
@@ -130,7 +131,7 @@ async def ensure_intake_question_indexes() -> None:
         [("isActive", 1), ("order", 1)],
         name="isActive_order",
     )
-    logger.info("Intake question indexes ensured")
+    logger.debug("Intake question indexes ensured")
 
 
 async def ensure_placement_question_indexes() -> None:
@@ -145,4 +146,4 @@ async def ensure_placement_question_indexes() -> None:
         [("isActive", 1), ("order", 1)],
         name="isActive_order",
     )
-    logger.info("Placement question indexes ensured")
+    logger.debug("Placement question indexes ensured")

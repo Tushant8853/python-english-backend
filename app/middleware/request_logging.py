@@ -25,7 +25,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             return response
 
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
-        message = f"{request.method} {request.url.path} → {response.status_code} ({duration_ms}ms)"
+        message = f"{request.method} {request.url.path} {response.status_code} {duration_ms}ms"
         if response.status_code >= 400:
             logger.warning(message)
         else:

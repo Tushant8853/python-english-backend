@@ -48,7 +48,9 @@ async def app_bootstrap(
     authenticated = user is not None
     onboarding_completed = bool(user.onboarding_complete) if user else False
 
-    logger.info(
+    # Keep bootstrap internals at DEBUG so dev output stays "one request = one INFO line"
+    # from RequestLoggingMiddleware.
+    logger.debug(
         "Bootstrap loaded",
         extra={
             "meta": {

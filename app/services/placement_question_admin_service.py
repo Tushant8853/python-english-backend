@@ -104,7 +104,7 @@ class PlacementQuestionAdminService:
                 raise AppError(f"At least two options required ({lang})", status_code=400)
 
         en_options = {option.id for option in question.content.get("en", PlacementQuestionLocale()).options}
-        if question.correct_option_id not in en_options:
+        if question.correct_option_id and question.correct_option_id not in en_options:
             raise AppError("correctOptionId must match an English option id", status_code=400)
 
     async def list_questions(self) -> dict[str, object]:
@@ -128,7 +128,7 @@ class PlacementQuestionAdminService:
             payload.get("content") if isinstance(payload.get("content"), dict) else None
         )
         question_key = await self._allocate_question_key(content, order)
-        correct_option_id = str(payload.get("correctOptionId") or "").strip()
+        correct_option_id = str(payload.get("correctOptionId") or "").strip() or None
 
         question = PlacementQuestionDocument(
             question_key=question_key,
@@ -151,7 +151,10 @@ class PlacementQuestionAdminService:
         if payload.get("isActive") is not None:
             existing.is_active = bool(payload["isActive"])
         if payload.get("correctOptionId") is not None:
-            existing.correct_option_id = str(payload["correctOptionId"]).strip()
+            raw_correct = payload.get("correctOptionId")
+            existing.correct_option_id = (
+                str(raw_correct).strip().upper() if str(raw_correct).strip() else None
+            )
         if payload.get("content") is not None and isinstance(payload["content"], dict):
             existing.content = self._parse_content(payload["content"])
 

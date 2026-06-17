@@ -84,8 +84,10 @@ class AuthService:
         user = await sync_user_intake_stage_for_config(user, config, user_repository=self._users)
         access_token = generate_access_token(str(user._id))
 
+        # Keep request output clean: request logging middleware already prints one access line
+        # per request. Authentication events are DEBUG to avoid multiple INFO lines per call.
         message = "User created and login successful" if is_new_user else "Login successful"
-        logger.info(
+        logger.debug(
             message,
             extra={
                 "meta": {
@@ -110,7 +112,7 @@ class AuthService:
             remove_fcm_token(user, payload.fcm_token)
             await self._users.save_user(user)
 
-        logger.info("Logout successful", extra={"meta": {"userId": str(user._id)}})
+        logger.debug("Logout successful", extra={"meta": {"userId": str(user._id)}})
         return LogoutResponse(status="success", message="Logout successful", data=None)
 
     async def delete_account(
@@ -122,7 +124,7 @@ class AuthService:
             remove_fcm_token(user, payload.fcm_token)
 
         await self._users.soft_delete_user(user)
-        logger.info(
+        logger.debug(
             "Account deleted",
             extra={"meta": {"userId": str(user._id), "email": user.email}},
         )
@@ -156,7 +158,7 @@ class AuthService:
         config = await get_active_app_config()
         user = await sync_user_intake_stage_for_config(user, config, user_repository=self._users)
 
-        logger.info(
+        logger.debug(
             "Basic onboarding completed",
             extra={
                 "meta": {

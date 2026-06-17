@@ -95,6 +95,11 @@ class PlacementOnboardingService:
             answers_by_key[key] = option_id
 
         correct_count = 0
+        scorable_questions = [
+            question
+            for question in questions
+            if question.correct_option_id and question.correct_option_id.strip()
+        ]
         for question in questions:
             selected = answers_by_key.get(question.question_key)
             if not selected:
@@ -103,10 +108,13 @@ class PlacementOnboardingService:
             valid_ids = {option.id for option in locale.options}
             if selected not in valid_ids:
                 raise AppError(f"Invalid option for {question.question_key}", status_code=400)
+
+        for question in scorable_questions:
+            selected = answers_by_key[question.question_key]
             if selected == question.correct_option_id:
                 correct_count += 1
 
-        total = len(questions)
+        total = len(scorable_questions)
         score = calculate_placement_score(correct_count, total)
         level = level_from_score(score)
 

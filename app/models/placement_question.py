@@ -35,7 +35,7 @@ class PlacementQuestionLocale:
 class PlacementQuestionDocument:
     question_key: str
     order: int
-    correct_option_id: str
+    correct_option_id: str | None = None
     is_active: bool = True
     content: dict[str, PlacementQuestionLocale] = field(default_factory=dict)
     id: str | None = None
@@ -44,10 +44,15 @@ class PlacementQuestionDocument:
 
     def to_mongo(self) -> dict[str, Any]:
         now = datetime.now(UTC)
+        correct_id = (
+            self.correct_option_id.strip().upper()
+            if self.correct_option_id and self.correct_option_id.strip()
+            else None
+        )
         return {
             "questionKey": self.question_key.strip(),
             "order": int(self.order),
-            "correctOptionId": self.correct_option_id.strip(),
+            "correctOptionId": correct_id,
             "isActive": bool(self.is_active),
             "content": {lang: block.to_mongo() for lang, block in self.content.items()},
             "updatedAt": now,
@@ -62,11 +67,17 @@ class PlacementQuestionDocument:
             for lang, block in content_raw.items()
             if isinstance(block, dict) or block is None
         }
+        raw_correct = raw.get("correctOptionId")
+        correct_option_id: str | None
+        if raw_correct is None or str(raw_correct).strip() == "":
+            correct_option_id = None
+        else:
+            correct_option_id = str(raw_correct).strip().upper()
         return cls(
             id=str(raw["_id"]),
             question_key=str(raw.get("questionKey") or ""),
             order=int(raw.get("order") or 0),
-            correct_option_id=str(raw.get("correctOptionId") or ""),
+            correct_option_id=correct_option_id,
             is_active=bool(raw.get("isActive", True)),
             content=content,
             created_at=raw.get("createdAt"),
